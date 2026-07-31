@@ -7,24 +7,6 @@ WhatsApp link. It deploys to **GitHub Pages** with **no backend server**.
 The GitHub Actions workflow is **already configured** — you only set two repository
 variables and enable Pages.
 
----
-
-## STEP 1 — Supabase (one SQL file)
-1. Create a free project at <https://supabase.com> (region: EU West / London is closest).
-2. **SQL Editor → New query** → paste ALL of `supabase/setup.sql` → **Run**.
-   (Creates tables, RLS, triggers, secure admin functions, storage, sample data.)
-3. **Authentication → Providers → Email** → turn **off** "Confirm email" (easy testing).
-4. **Project Settings → API** → copy **Project URL** and **anon public** key.
-
-## STEP 2 — Push to GitHub
-```bash
-cd naijaride
-git init && git add . && git commit -m "NaijaRide"
-git branch -M main
-git remote add origin https://github.com/<USER>/<REPO>.git
-git push -u origin main
-```
-
 ## STEP 3 — Enable Pages + add variables
 1. Repo → **Settings → Pages → Source = GitHub Actions**.
 2. Repo → **Settings → Secrets and variables → Actions → Variables → New variable**:
