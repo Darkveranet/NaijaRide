@@ -230,6 +230,7 @@ export default function DashboardPage() {
                     <div className="text-right">
                       <p className="font-display font-bold text-primary">{formatNaira(b.total_amount)}</p>
                       <Badge className="mt-1 bg-success/10 text-success">{BOOKING_STATUS_LABELS[b.status]}</Badge>
+                      <button onClick={() => router.push(`/receipt?id=${b.id}`)} className="mt-1 block text-xs font-medium text-primary hover:underline">Receipt →</button>
                     </div>
                   </div>
                 ))}
@@ -250,6 +251,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-3">
                         <span className="font-semibold">{formatNaira(b.total_amount)}</span>
                         <Badge variant="outline" className="capitalize">{BOOKING_STATUS_LABELS[b.status]}</Badge>
+                        <button onClick={() => router.push(`/receipt?id=${b.id}`)} className="text-xs font-medium text-primary hover:underline">Receipt</button>
                       </div>
                     </div>
                   ))}

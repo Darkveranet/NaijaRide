@@ -31,6 +31,8 @@ import {
   User as UserIcon,
   ShieldCheck,
   Truck,
+  QrCode,
+  Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -139,6 +141,14 @@ export function Navbar() {
                     <Truck className="mr-2 h-4 w-4" /> Create Trip
                   </DropdownMenuItem>
                 )}
+                {profile?.role === 'driver' && (
+                  <DropdownMenuItem onClick={() => router.push('/verify-booking')}>
+                    <QrCode className="mr-2 h-4 w-4" /> Verify passenger
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => router.push('/verify-phone')}>
+                  <Phone className="mr-2 h-4 w-4" /> Verify phone
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/profile')}>
                   <UserIcon className="mr-2 h-4 w-4" /> Profile
                 </DropdownMenuItem>

@@ -16,7 +16,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { formatNaira, formatDateTime, KYC_STATUS_LABELS } from '@/lib/constants';
 import {
   Users, Car, Calendar, ShieldCheck, CheckCircle2, XCircle, Loader2, TrendingUp,
-  Wallet, Ticket, BadgeCheck, Building2,
+  Wallet, Ticket, BadgeCheck, Building2, Settings2,
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -152,9 +152,14 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen"><Navbar />
       <div className="container py-8">
-        <div className="mb-8">
-          <h1 className="font-display text-2xl font-bold sm:text-3xl">Admin Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Monitor and manage the NaijaRide platform.</p>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl font-bold sm:text-3xl">Admin Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Monitor and manage the NaijaRide platform.</p>
+          </div>
+          <Button className="gap-2" onClick={() => router.push('/admin/operations')}>
+            <Settings2 className="h-4 w-4" /> Operations
+          </Button>
         </div>
 
         {/* Top stats */}
