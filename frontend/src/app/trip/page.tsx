@@ -2,6 +2,7 @@
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTrip, createBooking, confirmBooking } from '@/lib/data';
+import { payWithPaystack, PAYSTACK_ENABLED } from '@/lib/payments';
 import { SUPABASE_ENABLED, formatNaira } from '@/lib/supabase';
 import { Button, Input, VerifiedBadge, Skeleton, ConfigNotice } from '@/components/ui';
 
@@ -13,18 +14,19 @@ function TripDetailInner() {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-
   const book = async () => {
     setBusy(true);
     try {
       setStatus('Reserving your seat(s)…');
       const booking: any = await createBooking(id, seats);
 
-      // If a Paystack public key is set, launch inline checkout. Otherwise we
-      // confirm immediately (test flow) so you can see the end-to-end journey.
-      // Production payment verification should run in a Supabase Edge Function
-      // (see supabase/functions/paystack) that flips the booking to CONFIRMED.
+      if (PAYSTACK_ENABLED) {
+        setStatus('Redirecting to secure Paystack checkout…');
+        await payWithPaystack({ id: booking.id, amount: booking.amount });
+        return;
+      }
+
+      // Test flow (no Paystack key set): confirm immediately.
       await confirmBooking(booking.id);
       setStatus(`✅ Booked! Reference ${booking.reference}. See it in your bookings.`);
     } catch (e: any) {
@@ -65,8 +67,10 @@ function TripDetailInner() {
           <Input type="number" min={1} max={trip.availableSeats} value={seats} onChange={(e) => setSeats(Math.max(1, Number(e.target.value)))} />
         </label>
         <div className="mt-3 flex justify-between text-sm"><span>Total</span><span className="font-bold">{formatNaira(trip.pricePerSeat * seats)}</span></div>
-        <Button className="mt-4 w-full" onClick={book} disabled={busy}>Book seat{seats > 1 ? 's' : ''}</Button>
-        <p className="mt-2 text-xs text-gray-500">{paystackKey ? '🔒 Payments via Paystack.' : 'ℹ️ Test flow — booking confirmed instantly.'}</p>
+        <Button className="mt-4 w-full" onClick={book} disabled={busy}>
+          {PAYSTACK_ENABLED ? `Pay ${formatNaira(trip.pricePerSeat * seats)}` : `Book seat${seats > 1 ? 's' : ''}`}
+        </Button>
+        <p className="mt-2 text-xs text-gray-500">{PAYSTACK_ENABLED ? '🔒 Secure payment via Paystack.' : 'ℹ️ Test flow — booking confirmed instantly.'}</p>
         {status && <p className="mt-2 text-sm text-brand-600">{status}</p>}
       </aside>
     </div>

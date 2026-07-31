@@ -118,7 +118,7 @@ function TripForm({ vehicles, verified, onDone }: { vehicles: any[]; verified: b
     finally { setBusy(false); }
   };
 
-  if (!verified) return <div className="rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-6 text-sm text-amber-800 dark:text-amber-200">Your account must be verified before publishing trips. An admin can verify you from the Admin dashboard (demo), or set <code>is_verified = true</code> on your profile.</div>;
+  if (!verified) return <div className="rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-6 text-sm text-amber-800 dark:text-amber-200">Your account must be verified before publishing trips. An admin can verify you from the Admin dashboard, or set <code>is_verified = true</code> on your profile.</div>;
   if (vehicles.length === 0) return <div className="rounded-2xl border border-dashed p-6 text-sm text-gray-500">Add a vehicle first.</div>;
 
   return (

@@ -19,7 +19,6 @@ export default function Register() {
     setError(''); setMsg(''); setBusy(true);
     try {
       await signUp(form);
-      // If email confirmation is OFF in Supabase, we can sign in immediately.
       try {
         const { role } = await signIn(form.email, form.password);
         router.push(role === 'DRIVER' ? '/dashboard/driver' : '/dashboard/passenger');

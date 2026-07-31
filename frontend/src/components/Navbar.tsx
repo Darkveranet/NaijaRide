@@ -8,7 +8,7 @@ export function Navbar() {
   return (
     <>
       <div className={`px-4 py-1.5 text-center text-xs font-semibold text-white ${SUPABASE_ENABLED ? 'bg-brand-600' : 'bg-amber-500'}`}>
-        {SUPABASE_ENABLED ? '🟢 Live — connected to Supabase' : '⚙️ Supabase not configured — see docs/SUPABASE.md'}
+        {SUPABASE_ENABLED ? '🟢 Live — connected to Supabase' : '⚙️ Supabase not configured — see SETUP.md'}
       </div>
       <header className="sticky top-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">

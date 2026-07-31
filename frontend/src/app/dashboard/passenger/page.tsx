@@ -2,6 +2,7 @@
 import { useMyBookings } from '@/lib/data';
 import { SUPABASE_ENABLED, formatNaira } from '@/lib/supabase';
 import { Skeleton, ConfigNotice } from '@/components/ui';
+import { ContactDriver } from '@/components/ContactDriver';
 
 export default function PassengerDashboard() {
   const { data, isLoading } = useMyBookings();
@@ -15,15 +16,24 @@ export default function PassengerDashboard() {
       {isLoading && <Skeleton className="h-24" />}
       {!isLoading && bookings.length === 0 && <div className="rounded-2xl border border-dashed p-10 text-center text-gray-500">No bookings yet. Find a ride to get started.</div>}
       <div className="space-y-3">
-        {bookings.map((b: any) => (
-          <div key={b.id} className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4">
-            <div className="flex justify-between">
-              <div className="font-bold">{b.trip?.departureCity} → {b.trip?.destinationCity}</div>
-              <StatusPill status={b.status} />
+        {bookings.map((b: any) => {
+          const canContact = ['CONFIRMED', 'COMPLETED'].includes(b.status) && b.trip?.driver?.phone;
+          return (
+            <div key={b.id} className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4">
+              <div className="flex justify-between">
+                <div className="font-bold">{b.trip?.departureCity} → {b.trip?.destinationCity}</div>
+                <StatusPill status={b.status} />
+              </div>
+              <div className="mt-1 text-sm text-gray-500">Ref {b.reference} · {b.seatCount} seat(s) · {formatNaira(b.amount)}</div>
+              {canContact && (
+                <div className="mt-3">
+                  <ContactDriver compact phone={b.trip.driver.phone} driverName={b.trip.driver.firstName}
+                    reference={b.reference} route={`${b.trip.departureCity} → ${b.trip.destinationCity}`} />
+                </div>
+              )}
             </div>
-            <div className="mt-1 text-sm text-gray-500">Ref {b.reference} · {b.seatCount} seat(s) · {formatNaira(b.amount)}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

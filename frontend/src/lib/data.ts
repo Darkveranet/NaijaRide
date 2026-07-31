@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase, SUPABASE_ENABLED } from './supabase';
 
 // ── Guard ────────────────────────────────────────────────────
@@ -8,7 +8,7 @@ function db() {
   return supabase;
 }
 
-// ── Mappers (snake_case DB → camelCase UI) ───────────────────
+// ── Mappers (snake_case DB -> camelCase UI) ──────────────────
 function mapTrip(r: any) {
   if (!r) return null;
   return {
@@ -23,7 +23,8 @@ function mapTrip(r: any) {
     vehicle: r.vehicle ? { make: r.vehicle.make, model: r.vehicle.model, colour: r.vehicle.colour, hasAc: r.vehicle.has_ac, seats: r.vehicle.seats } : null,
     driver: r.driver ? {
       isVerified: r.driver.is_verified, ratingAverage: r.driver.rating_average, ratingCount: r.driver.rating_count,
-      user: { firstName: r.driver.first_name, lastName: r.driver.last_name, avatarUrl: r.driver.avatar_url },
+      phone: r.driver.phone, // used for the "Contact driver" WhatsApp link
+      user: { firstName: r.driver.first_name, lastName: r.driver.last_name, avatarUrl: r.driver.avatar_url, phone: r.driver.phone },
     } : null,
   };
 }
@@ -34,13 +35,14 @@ function mapBooking(r: any) {
     trip: r.trip ? {
       departureCity: r.trip.departure_city, destinationCity: r.trip.destination_city,
       departAt: r.trip.depart_at,
+      driver: r.trip.driver ? { firstName: r.trip.driver.first_name, phone: r.trip.driver.phone } : null,
       vehicle: r.trip.vehicle ? { make: r.trip.vehicle.make, model: r.trip.vehicle.model, hasAc: r.trip.vehicle.has_ac } : null,
     } : null,
   };
 }
 
 const TRIP_SELECT =
-  '*, driver:driver_id!inner(first_name,last_name,avatar_url,is_verified,rating_average,rating_count), vehicle:vehicle_id!inner(make,model,colour,has_ac,seats)';
+  '*, driver:driver_id!inner(first_name,last_name,phone,avatar_url,is_verified,rating_average,rating_count), vehicle:vehicle_id!inner(make,model,colour,has_ac,seats)';
 
 // ── Auth ─────────────────────────────────────────────────────
 export async function signUp(input: { email: string; password: string; firstName: string; lastName: string; phone: string; role: 'PASSENGER' | 'DRIVER' }) {
@@ -149,7 +151,7 @@ export async function createVehicle(input: any) {
 export async function createBooking(tripId: string, seatCount: number) {
   const { data, error } = await db().rpc('create_booking', { p_trip_id: tripId, p_seat_count: seatCount });
   if (error) throw error;
-  return data; // booking row
+  return data;
 }
 
 export async function confirmBooking(bookingId: string) {
@@ -162,7 +164,7 @@ export async function myBookings() {
   const { data: { user } } = await db().auth.getUser();
   if (!user) return [];
   const { data, error } = await db().from('bookings')
-    .select('*, trip:trip_id(departure_city,destination_city,depart_at, vehicle:vehicle_id(make,model,has_ac))')
+    .select('*, trip:trip_id(departure_city,destination_city,depart_at, driver:driver_id(first_name,phone), vehicle:vehicle_id(make,model,has_ac))')
     .eq('passenger_id', user.id).order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []).map(mapBooking);

@@ -41,7 +41,7 @@ export function ConfigNotice() {
       <p className="mt-2 text-amber-700 dark:text-amber-300">
         Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> (locally in
         <code> .env.local</code>, or as GitHub Pages repository variables) and run the SQL in
-        <code> supabase/schema.sql</code> + <code>supabase/seed.sql</code>. See <code>docs/SUPABASE.md</code>.
+        <code> supabase/schema.sql</code>. See <code>SETUP.md</code>.
       </p>
     </div>
   );
