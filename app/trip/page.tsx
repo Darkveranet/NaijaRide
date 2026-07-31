@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/client';
+import { payWithPaystack, PAYSTACK_ENABLED } from '@/lib/payments';
 import { useAuth } from '@/components/providers/auth-provider';
 import { formatNaira, formatDateTime, timeUntil, TRIP_STATUS_LABELS } from '@/lib/constants';
 import { TripWithDriver, Review } from '@/lib/types';
@@ -81,7 +82,18 @@ function TripDetail() {
     const result = data as { error?: string; id?: string; booking_reference?: string; discount?: number };
     if (result?.error) { setBooking(false); toast.error(result.error); return; }
     if (result?.discount) setDiscount(result.discount);
-    // Test-confirm (no live charge). When Paystack is wired, redirect to checkout instead.
+
+    if (PAYSTACK_ENABLED) {
+      // Real payment: redirect to Paystack. The webhook confirms + credits the driver.
+      try {
+        await payWithPaystack({ id: result.id!, total_amount: (trip.price_per_seat * seats) - (result.discount || 0) });
+        return; // browser navigates away to Paystack
+      } catch (e: any) {
+        setBooking(false); toast.error(e?.message || 'Could not start payment'); return;
+      }
+    }
+
+    // Test flow (no Paystack key set): confirm immediately.
     const { error: payErr } = await supabase.rpc('mark_payment_success', {
       p_booking_id: result.id, p_ref: 'TEST-' + Date.now(), p_channel: 'test',
     });
@@ -247,7 +259,7 @@ function TripDetail() {
                   <Badge variant="secondary" className="w-full justify-center py-2">This is your trip</Badge>
                 ) : (
                   <Button className="w-full gap-2" onClick={handleBook} disabled={booking}>
-                    {booking ? (<><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>) : (<><CheckCircle2 className="h-4 w-4" /> Confirm booking</>)}
+                    {booking ? (<><Loader2 className="h-4 w-4 animate-spin" /> {PAYSTACK_ENABLED ? 'Redirecting…' : 'Confirming...'}</>) : (<><CheckCircle2 className="h-4 w-4" /> {PAYSTACK_ENABLED ? `Pay ${formatNaira(Math.max(0, trip.price_per_seat * seats - discount))}` : 'Confirm booking'}</>)}
                   </Button>
                 )}
                 <p className="text-center text-xs text-muted-foreground">Secure booking · Free cancellation up to 24h before departure</p>
