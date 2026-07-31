@@ -16,7 +16,7 @@ import { formatNaira, formatDateTime, TRIP_STATUS_LABELS, KYC_STATUS_LABELS } fr
 import { Trip, Booking } from '@/lib/types';
 import {
   Plus, Car, Calendar, Users, Wallet, Star, ShieldCheck, TrendingUp, ArrowRight,
-  Clock, Banknote, PiggyBank, AlertCircle, CheckCircle2,
+  Clock, Banknote, PiggyBank, AlertCircle, CheckCircle2, ClipboardList,
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -147,7 +147,9 @@ export default function DriverDashboardPage() {
             </div>
             <p className="text-sm text-muted-foreground">{profile?.full_name} · KYC: {profile ? KYC_STATUS_LABELS[profile.kyc_status] : '—'}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => router.push('/driver/bookings')}><ClipboardList className="h-4 w-4" /> Bookings</Button>
+            <Button variant="outline" className="gap-2" onClick={() => router.push('/driver/payouts')}><Wallet className="h-4 w-4" /> Wallet</Button>
             <Button variant="outline" className="gap-2" onClick={() => router.push('/driver/vehicles')}><Car className="h-4 w-4" /> Vehicles</Button>
             <Button className="gap-2" onClick={() => router.push('/driver/trips/new')}><Plus className="h-4 w-4" /> Create Trip</Button>
           </div>
@@ -320,6 +322,8 @@ export default function DriverDashboardPage() {
             <Card>
               <CardHeader><CardTitle className="text-base">Quick actions</CardTitle></CardHeader>
               <CardContent className="grid gap-2">
+                <Button variant="outline" className="justify-start gap-2" onClick={() => router.push('/driver/bookings')}><ClipboardList className="h-4 w-4" /> Bookings & requests</Button>
+                <Button variant="outline" className="justify-start gap-2" onClick={() => router.push('/driver/payouts')}><Wallet className="h-4 w-4" /> Wallet & payouts</Button>
                 <Button variant="outline" className="justify-start gap-2" onClick={() => router.push('/driver/trips/new')}><Plus className="h-4 w-4" /> Publish a trip</Button>
                 <Button variant="outline" className="justify-start gap-2" onClick={() => router.push('/driver/vehicles')}><Car className="h-4 w-4" /> Manage vehicles</Button>
                 <Button variant="outline" className="justify-start gap-2" onClick={() => router.push('/driver/verification')}><ShieldCheck className="h-4 w-4" /> Verification</Button>

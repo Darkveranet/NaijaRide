@@ -16,7 +16,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { formatNaira, formatDateTime, KYC_STATUS_LABELS } from '@/lib/constants';
 import {
   Users, Car, Calendar, ShieldCheck, CheckCircle2, XCircle, Loader2, TrendingUp,
-  Wallet, Ticket, BadgeCheck, Building2, Settings2,
+  Wallet, Ticket, BadgeCheck, Building2, Ban, RotateCcw, Undo2,
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -67,7 +67,7 @@ export default function AdminPage() {
         supabase.from('profiles').select('*').eq('role', 'driver').order('created_at', { ascending: false }),
         supabase.from('vehicles').select('*, driver:profiles!vehicles_driver_id_fkey(full_name)').order('created_at', { ascending: false }),
         supabase.from('trips').select('*, driver:profiles!trips_driver_id_fkey(full_name)').order('created_at', { ascending: false }).limit(50),
-        supabase.from('bookings').select('id, total_amount, seats_booked, status, booking_reference, created_at').order('created_at', { ascending: false }).limit(200),
+        supabase.from('bookings').select('id, total_amount, seats_booked, status, payment_status, booking_reference, created_at, trip_id').order('created_at', { ascending: false }).limit(200),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'passenger'),
       ]);
       setDrivers((d || []) as AdminProfile[]);
@@ -137,6 +137,35 @@ export default function AdminPage() {
     toast.success(`Vehicle ${status}`);
   };
 
+  const setAccount = async (id: string, status: 'active' | 'suspended' | 'banned') => {
+    setActing(id);
+    const { error } = await supabase.rpc('admin_set_account_status', { p_user: id, p_status: status });
+    setActing(null);
+    if (error) { toast.error(error.message); return; }
+    setDrivers((ds) => ds.map((d) => (d.id === id ? { ...d, account_status: status } : d)));
+    toast.success(`Account ${status}`);
+  };
+
+  const cancelTrip = async (id: string) => {
+    if (!confirm('Cancel this trip? Active bookings will be cancelled and passengers notified.')) return;
+    setActing(id);
+    const { error } = await supabase.rpc('admin_cancel_trip', { p_trip: id, p_reason: null });
+    setActing(null);
+    if (error) { toast.error(error.message); return; }
+    setTrips((ts) => ts.map((t) => (t.id === id ? { ...t, status: 'cancelled' } : t)));
+    toast.success('Trip cancelled');
+  };
+
+  const refundBooking = async (id: string) => {
+    if (!confirm('Refund this booking? Driver earnings are reversed and seats released.')) return;
+    setActing(id);
+    const { error } = await supabase.rpc('admin_refund_booking', { p_booking: id, p_amount: null, p_ref: null });
+    setActing(null);
+    if (error) { toast.error(error.message); return; }
+    setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, status: 'refunded', payment_status: 'refunded' } : b)));
+    toast.success('Booking refunded');
+  };
+
   if (loading || loadingData) {
     return (
       <div className="min-h-screen"><Navbar />
@@ -152,14 +181,9 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen"><Navbar />
       <div className="container py-8">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-bold sm:text-3xl">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Monitor and manage the NaijaRide platform.</p>
-          </div>
-          <Button className="gap-2" onClick={() => router.push('/admin/operations')}>
-            <Settings2 className="h-4 w-4" /> Operations
-          </Button>
+        <div className="mb-8">
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">Admin Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Monitor and manage the NaijaRide platform.</p>
         </div>
 
         {/* Top stats */}
@@ -247,6 +271,14 @@ export default function AdminPage() {
                         <Button size="sm" variant="outline" className="gap-1.5 text-destructive" disabled={acting === d.id} onClick={() => rejectDriver(d.id)}><XCircle className="h-3.5 w-3.5" /> Reject</Button>
                       </>
                     )}
+                    {(d as any).account_status === 'active' || !(d as any).account_status ? (
+                      <>
+                        <Button size="sm" variant="outline" className="gap-1.5" disabled={acting === d.id} onClick={() => setAccount(d.id, 'suspended')}><Ban className="h-3.5 w-3.5" /> Suspend</Button>
+                        <Button size="sm" variant="outline" className="gap-1.5 text-destructive" disabled={acting === d.id} onClick={() => setAccount(d.id, 'banned')}>Ban</Button>
+                      </>
+                    ) : (
+                      <Button size="sm" variant="outline" className="gap-1.5" disabled={acting === d.id} onClick={() => setAccount(d.id, 'active')}><RotateCcw className="h-3.5 w-3.5" /> Reactivate</Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -290,6 +322,9 @@ export default function AdminPage() {
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-primary">{formatNaira(t.price_per_seat)}</span>
                   <Badge variant="outline" className="capitalize">{t.status.replace('_', ' ')}</Badge>
+                  {['scheduled','in_progress'].includes(t.status) && (
+                    <Button size="sm" variant="outline" className="gap-1.5 text-destructive" disabled={acting === t.id} onClick={() => cancelTrip(t.id)}>{acting === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />} Cancel</Button>
+                  )}
                 </div>
               </CardContent></Card>
             ))}
@@ -306,6 +341,9 @@ export default function AdminPage() {
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold">{formatNaira(b.total_amount)}</span>
                   <Badge variant="outline" className="capitalize">{b.status}</Badge>
+                  {(b as any).payment_status === 'paid' && b.status !== 'refunded' && (
+                    <Button size="sm" variant="outline" className="gap-1.5 text-destructive" disabled={acting === b.id} onClick={() => refundBooking(b.id)}>{acting === b.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />} Refund</Button>
+                  )}
                 </div>
               </CardContent></Card>
             ))}
