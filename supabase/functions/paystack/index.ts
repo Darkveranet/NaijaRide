@@ -1,5 +1,8 @@
-// Supabase Edge Function — Paystack (REAL charging). Web Crypto, no node imports.
-// Deploy (Dashboard): function name `paystack`, paste this as index.ts, Deploy.
+// Supabase Edge Function — Paystack. Web Crypto (no node imports).
+// Routes:
+//   POST /paystack/initialize { bookingId, email, amount, callbackUrl } -> { authorizationUrl, reference }
+//   POST /paystack/verify     { reference }  -> verifies with Paystack, confirms booking, returns {status}
+//   POST /paystack/webhook    (Paystack)     -> HMAC check, confirms booking
 // Secrets: PAYSTACK_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -16,6 +19,31 @@ async function hmacSha512Hex(secret: string, message: string): Promise<string> {
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Extract bookingId from our reference: PAY-<uuid>-<timestamp>
+function bookingIdFromRef(ref: string): string | null {
+  const p = ref.split('-');
+  if (p[0] !== 'PAY' || p.length < 3) return null;
+  return p.slice(1, p.length - 1).join('-');
+}
+
+async function confirm(reference: string) {
+  // Ask Paystack for the truth (works even if the webhook never fired).
+  const res = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${SECRET}` },
+  });
+  const data = await res.json();
+  if (!data.status || data.data?.status !== 'success') {
+    return { ok: false, status: data.data?.status ?? 'unknown' };
+  }
+  const bookingId = data.data?.metadata?.bookingId || bookingIdFromRef(reference);
+  const channel = data.data?.channel ?? 'card';
+  if (bookingId) {
+    const { error } = await admin.rpc('mark_payment_success', { p_booking_id: bookingId, p_ref: reference, p_channel: channel });
+    if (error) return { ok: false, status: 'rpc_error', error: error.message };
+  }
+  return { ok: true, status: 'success', bookingId };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const path = new URL(req.url).pathname;
@@ -28,16 +56,20 @@ Deno.serve(async (req: Request) => {
       const res = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
         headers: { Authorization: `Bearer ${SECRET}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email, amount: amount * 100, reference,
-          callback_url: callbackUrl,           // ← sends the browser back to our success page
-          channels: ['card', 'bank_transfer', 'ussd', 'apple_pay'],
-          metadata: { bookingId },
-        }),
+        body: JSON.stringify({ email, amount: amount * 100, reference, callback_url: callbackUrl, channels: ['card','bank_transfer','ussd','apple_pay'], metadata: { bookingId } }),
       });
       const data = await res.json();
       if (!data.status) return json({ error: data.message ?? 'init failed' }, 400);
       return json({ authorizationUrl: data.data.authorization_url, reference: data.data.reference });
+    } catch (e) { return json({ error: String(e) }, 500); }
+  }
+
+  // Browser calls this from the success page (source-of-truth confirmation).
+  if (req.method === 'POST' && path.endsWith('/verify')) {
+    try {
+      const { reference } = await req.json();
+      if (!reference) return json({ error: 'reference required' }, 400);
+      return json(await confirm(reference));
     } catch (e) { return json({ error: String(e) }, 500); }
   }
 
@@ -46,11 +78,7 @@ Deno.serve(async (req: Request) => {
     const signature = req.headers.get('x-paystack-signature') ?? '';
     if (await hmacSha512Hex(SECRET, raw) !== signature) return json({ error: 'invalid signature' }, 401);
     const event = JSON.parse(raw);
-    if (event.event === 'charge.success') {
-      const bookingId = event.data?.metadata?.bookingId;
-      const channel = event.data?.channel ?? 'card';
-      if (bookingId) await admin.rpc('mark_payment_success', { p_booking_id: bookingId, p_ref: event.data.reference, p_channel: channel });
-    }
+    if (event.event === 'charge.success') { await confirm(event.data.reference); }
     return json({ ok: true });
   }
   return json({ error: 'not found' }, 404);
