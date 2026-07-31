@@ -1,8 +1,8 @@
-# NaijaRide 🚗 — Nigerian Intercity Car Trip Booking (Supabase + GitHub Pages)
+# NaijaRide 🚗  Nigerian Intercity Car Trip Booking (Supabase + GitHub Pages)
 
 A mobile-first marketplace connecting **verified vehicle owners** with **passengers**
 travelling between Nigerian cities. Drivers publish scheduled trips; passengers search,
-compare and book seats — with **real data** powered by **Supabase**, deployable to
+compare and book seats with **real data** powered by **Supabase**, deployable to
 **GitHub Pages** with **no backend server**.
 
 ---
