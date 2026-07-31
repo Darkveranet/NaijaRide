@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -42,6 +43,8 @@ function TripDetail() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [seats, setSeats] = useState(1);
+  const [promo, setPromo] = useState('');
+  const [discount, setDiscount] = useState(0);
   const [booking, setBooking] = useState(false);
 
   useEffect(() => {
@@ -70,13 +73,20 @@ function TripDetail() {
     if (!user) { toast.error('Please sign in to book a trip'); router.push('/login'); return; }
     if (!trip) return;
     setBooking(true);
-    const { data, error } = await supabase.rpc('book_trip', {
-      p_trip_id: trip.id, p_passenger_id: user.id, p_seats: seats,
+    // Create the booking (applies promo code + returns discount) via Phase 1 RPC.
+    const { data, error } = await supabase.rpc('request_booking', {
+      p_trip_id: trip.id, p_seats: seats, p_promo: promo.trim() || null,
+    });
+    if (error) { setBooking(false); toast.error(error.message); return; }
+    const result = data as { error?: string; id?: string; booking_reference?: string; discount?: number };
+    if (result?.error) { setBooking(false); toast.error(result.error); return; }
+    if (result?.discount) setDiscount(result.discount);
+    // Test-confirm (no live charge). When Paystack is wired, redirect to checkout instead.
+    const { error: payErr } = await supabase.rpc('mark_payment_success', {
+      p_booking_id: result.id, p_ref: 'TEST-' + Date.now(), p_channel: 'test',
     });
     setBooking(false);
-    if (error) { toast.error(error.message); return; }
-    const result = data as { error?: string; booking_reference?: string };
-    if (result?.error) { toast.error(result.error); return; }
+    if (payErr) { toast.error(payErr.message); return; }
     toast.success(`Booking confirmed! Reference: ${result?.booking_reference}`);
     router.push('/dashboard');
   };
@@ -221,8 +231,12 @@ function TripDetail() {
                     <span className="ml-2 text-xs text-muted-foreground">{trip.available_seats} available</span>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Promo code</label>
+                  <Input value={promo} onChange={(e) => setPromo(e.target.value.toUpperCase())} placeholder="Have a code?" />
+                </div>
                 <Separator />
-                <div className="flex items-center justify-between"><span className="font-medium">Total</span><span className="font-display text-2xl font-bold text-primary">{formatNaira(trip.price_per_seat * seats)}</span></div>
+                <div className="flex items-center justify-between"><span className="font-medium">Total{discount > 0 ? ` (−${formatNaira(discount)})` : ''}</span><span className="font-display text-2xl font-bold text-primary">{formatNaira(Math.max(0, trip.price_per_seat * seats - discount))}</span></div>
                 {isPast ? (
                   <Badge variant="secondary" className="w-full justify-center py-2">This trip has departed</Badge>
                 ) : isFull ? (
