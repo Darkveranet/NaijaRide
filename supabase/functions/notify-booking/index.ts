@@ -1,4 +1,8 @@
-// Supabase Edge Function — notify-booking (FREE TIER: email + WhatsApp).
+// Supabase Edge Function — notify-booking (FREE TIER).
+// Matched to the shared repo schema: bookings(seats_booked,total_amount,
+// booking_reference,status,passenger_id,trip_id), trips(origin,destination,
+// departure_time,driver_id), profiles(full_name,phone).
+//
 // Deploy:  supabase functions deploy notify-booking --no-verify-jwt
 // Secrets: supabase secrets set NOTIFY_SECRET=... RESEND_API_KEY=re_... \
 //   MAIL_FROM="NaijaRide <onboarding@resend.dev>" \
@@ -17,7 +21,7 @@ const WA_TEMPLATE = Deno.env.get('WHATSAPP_TEMPLATE') ?? '';
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
-const naira = (kobo: number) => `₦${(Number(kobo || 0) / 100).toLocaleString('en-NG')}`;
+const naira = (n: number) => `₦${Number(n || 0).toLocaleString('en-NG')}`;
 
 function waNumber(phone?: string | null): string | null {
   if (!phone) return null;
@@ -55,42 +59,43 @@ serve(async (req) => {
   const { bookingId } = await req.json().catch(() => ({}));
   if (!bookingId) return json({ error: 'bookingId required' }, 400);
 
-  const { data: b, error } = await admin.from('bookings')
-    .select('id, reference, seat_count, amount, status, notified_at, passenger_id, ' +
-            'trip:trip_id(departure_city,destination_city,pickup_point,dropoff_point,departure_time,depart_at, ' +
-            'driver:driver_id(first_name,phone))')
-    .eq('id', bookingId).single();
+  const { data: b, error } = await admin
+    .from('bookings')
+    .select('id, booking_reference, seats_booked, total_amount, status, notified_at, passenger_id, ' +
+            'trip:trips!bookings_trip_id_fkey(origin,destination,departure_time, ' +
+            'driver:profiles!trips_driver_id_fkey(full_name,phone))')
+    .eq('id', bookingId)
+    .single();
   if (error || !b) return json({ error: 'booking not found' }, 404);
-  if (b.status !== 'CONFIRMED') return json({ skipped: 'not confirmed' });
+  if (b.status !== 'confirmed') return json({ skipped: 'not confirmed' });
   if (b.notified_at) return json({ skipped: 'already notified' });
 
   const trip: any = b.trip; const driver: any = trip?.driver;
-  const { data: pax } = await admin.from('profiles').select('first_name, phone').eq('id', b.passenger_id).single();
+  const { data: pax } = await admin.from('profiles').select('full_name, phone').eq('id', b.passenger_id).single();
   const { data: userRes } = await admin.auth.admin.getUserById(b.passenger_id);
   const paxEmail = userRes?.user?.email ?? '';
-  const when = new Date(trip.depart_at).toLocaleString('en-NG');
-  const route = `${trip.departure_city} → ${trip.destination_city}`;
+  const when = new Date(trip.departure_time).toLocaleString('en-NG');
+  const route = `${trip.origin} → ${trip.destination}`;
 
   const html = `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:auto">
-    <h2 style="color:#0a8f45">Booking confirmed ✅</h2>
-    <p>Hi ${pax?.first_name ?? 'there'}, your seat is booked.</p>
+    <h2 style="color:#16a34a">Booking confirmed ✅</h2>
+    <p>Hi ${pax?.full_name ?? 'there'}, your seat is booked.</p>
     <table style="width:100%;border-collapse:collapse">
-      <tr><td>Reference</td><td style="text-align:right"><b>${b.reference}</b></td></tr>
+      <tr><td>Reference</td><td style="text-align:right"><b>${b.booking_reference}</b></td></tr>
       <tr><td>Route</td><td style="text-align:right"><b>${route}</b></td></tr>
-      <tr><td>Departure</td><td style="text-align:right">${when} (${trip.departure_time})</td></tr>
-      <tr><td>Pickup</td><td style="text-align:right">${trip.pickup_point}</td></tr>
-      <tr><td>Seats</td><td style="text-align:right">${b.seat_count}</td></tr>
-      <tr><td>Amount paid</td><td style="text-align:right"><b>${naira(b.amount)}</b></td></tr>
-      <tr><td>Driver</td><td style="text-align:right">${driver?.first_name ?? '—'}${driver?.phone ? ' · ' + driver.phone : ''}</td></tr>
+      <tr><td>Departure</td><td style="text-align:right">${when}</td></tr>
+      <tr><td>Seats</td><td style="text-align:right">${b.seats_booked}</td></tr>
+      <tr><td>Amount</td><td style="text-align:right"><b>${naira(b.total_amount)}</b></td></tr>
+      <tr><td>Driver</td><td style="text-align:right">${driver?.full_name ?? '—'}${driver?.phone ? ' · ' + driver.phone : ''}</td></tr>
     </table></div>`;
-  await sendEmail(paxEmail, `NaijaRide booking ${b.reference} confirmed`, html);
+  await sendEmail(paxEmail, `NaijaRide booking ${b.booking_reference} confirmed`, html);
 
   await sendWhatsApp(waNumber(pax?.phone),
-    `✅ NaijaRide booking confirmed\nRef: ${b.reference}\n${route}\nDeparts: ${when}\nPickup: ${trip.pickup_point}\n` +
-    `Seats: ${b.seat_count} · Paid: ${naira(b.amount)}\nDriver: ${driver?.first_name ?? '—'}${driver?.phone ? ' (' + driver.phone + ')' : ''}`);
+    `✅ NaijaRide booking confirmed\nRef: ${b.booking_reference}\n${route}\nDeparts: ${when}\n` +
+    `Seats: ${b.seats_booked} · ${naira(b.total_amount)}\nDriver: ${driver?.full_name ?? '—'}${driver?.phone ? ' (' + driver.phone + ')' : ''}`);
   await sendWhatsApp(waNumber(driver?.phone),
-    `🚗 New confirmed booking\n${route}\nRef: ${b.reference}\nSeats: ${b.seat_count}\nPassenger: ${pax?.first_name ?? '—'}\nDeparts: ${when}`);
+    `🚗 New confirmed booking\n${route}\nRef: ${b.booking_reference}\nSeats: ${b.seats_booked}\nPassenger: ${pax?.full_name ?? '—'}\nDeparts: ${when}`);
 
   await admin.from('bookings').update({ notified_at: new Date().toISOString() }).eq('id', b.id);
-  return json({ ok: true, notified: b.reference });
+  return json({ ok: true, notified: b.booking_reference });
 });
