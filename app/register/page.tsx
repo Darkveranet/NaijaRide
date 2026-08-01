@@ -31,6 +31,7 @@ function RegisterForm() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [referral, setReferral] = useState('');
   const [loading, setLoading] = useState(false);
 
   const validatePassword = (pw: string): string | null => {
@@ -59,6 +60,10 @@ function RegisterForm() {
       setLoading(false);
       toast.error(error.message);
       return;
+    }
+    // Redeem a referral code if provided (best-effort; ignore failures).
+    if (referral.trim()) {
+      try { await supabase.rpc('redeem_referral', { p_code: referral.trim() }); } catch {}
     }
     // The database trigger creates the profile with role + phone automatically.
     // Wait briefly for the trigger + session to settle, then redirect.
@@ -139,6 +144,15 @@ function RegisterForm() {
                     onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="referral">Referral code (optional)</Label>
+                <Input
+                  id="referral"
+                  placeholder="Enter a friend's code"
+                  value={referral}
+                  onChange={(e) => setReferral(e.target.value.toUpperCase())}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
