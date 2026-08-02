@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/providers/theme-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { Chatbot } from '@/components/shared/chatbot';
+import { SosButton } from '@/components/shared/sos-button';
 import { PwaRegister } from '@/components/pwa-register';
 import { InstallPrompt } from '@/components/install-prompt';
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
             <Toaster />
             <Chatbot />
+            <SosButton />
             <PwaRegister />
             <InstallPrompt />
           </AuthProvider>
