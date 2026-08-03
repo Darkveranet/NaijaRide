@@ -33,8 +33,6 @@ import {
   Truck,
   QrCode,
   Phone,
-  ShieldAlert,
-  Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -146,14 +144,6 @@ export function Navbar() {
                 {profile?.role === 'driver' && (
                   <DropdownMenuItem onClick={() => router.push('/verify-booking')}>
                     <QrCode className="mr-2 h-4 w-4" /> Verify passenger
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => router.push('/emergency-contacts')}>
-                  <ShieldAlert className="mr-2 h-4 w-4" /> Emergency Contacts
-                </DropdownMenuItem>
-                {profile?.role === 'admin' && (
-                  <DropdownMenuItem onClick={() => router.push('/admin/integrations')}>
-                    <Plug className="mr-2 h-4 w-4" /> Integrations
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => router.push('/verify-phone')}>

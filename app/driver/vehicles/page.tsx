@@ -39,7 +39,6 @@ export default function VehiclesPage() {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // form
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
@@ -83,14 +82,14 @@ export default function VehiclesPage() {
 
     setSaving(true);
     try {
-      // Photo upload is BEST-EFFORT: if the storage bucket isn't set up yet, we still
-      // create the vehicle (without a photo) rather than failing the whole action.
+      // Photo upload is BEST-EFFORT: if the storage bucket isn't set up yet, we
+      // still create the vehicle (without a photo) rather than failing the action.
       let photo_url: string | null = null;
       if (photo) {
         try {
           const { url } = await uploadFile('vehicle-photos', photo, { prefix: 'vehicle' });
           photo_url = url;
-        } catch (up: any) {
+        } catch {
           toast.message('Photo not uploaded (storage not configured) — vehicle saved without it.');
         }
       }
@@ -136,7 +135,6 @@ export default function VehiclesPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          {/* List */}
           <div className="space-y-3">
             {vehicles.length === 0 ? (
               <Card className="border-dashed">
@@ -181,7 +179,6 @@ export default function VehiclesPage() {
             )}
           </div>
 
-          {/* Add form */}
           <Card className="h-fit lg:sticky lg:top-20">
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Plus className="h-5 w-5" /> Add a vehicle</CardTitle></CardHeader>
             <CardContent>

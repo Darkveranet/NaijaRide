@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/components/providers/auth-provider';
 import { formatNaira, formatDateTime } from '@/lib/constants';
-import { Printer, XCircle, Loader2, ShieldCheck, MapPin, Share2 } from 'lucide-react';
+import { Printer, XCircle, Loader2, ShieldCheck, MapPin } from 'lucide-react';
 
 function Inner() {
   const params = useSearchParams();
@@ -63,12 +63,6 @@ function Inner() {
                 {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />} Cancel
               </Button>
             )}
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
-              const url = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}/trip-share/?token=${b.qr_token || b.booking_reference}`;
-              const msg = `Track my NaijaRide trip live: ${url}`;
-              if (navigator.share) navigator.share({ title: 'NaijaRide trip', text: msg, url }).catch(()=>{});
-              else { navigator.clipboard.writeText(url).then(()=>toast.success('Share link copied')); window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank'); }
-            }}><Share2 className="h-4 w-4" /> Share trip</Button>
             <Button size="sm" className="gap-1.5" onClick={() => window.print()}><Printer className="h-4 w-4" /> Save as PDF</Button>
           </div>
         </div>

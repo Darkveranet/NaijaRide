@@ -30,7 +30,6 @@ export default function NewTripPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // form
   const [vehicleId, setVehicleId] = useState('');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
@@ -88,9 +87,9 @@ export default function NewTripPage() {
 
     setSubmitting(true);
 
-    // CORE insert — only columns guaranteed to exist in every version of the schema.
-    // (pickup_point / dropoff_point are added by Phase-1 SQL; we add them separately
-    //  below as a best-effort so a missing column can NEVER block trip creation.)
+    // CORE insert — only columns guaranteed to exist in every schema version.
+    // pickup_point / dropoff_point (Phase-1 SQL) are added separately as a
+    // best-effort update so a missing column can NEVER block trip creation.
     const { data: created, error } = await supabase
       .from('trips')
       .insert({
@@ -113,11 +112,10 @@ export default function NewTripPage() {
       return;
     }
 
-    // Best-effort: attach pickup/drop-off if those columns exist. Failure is ignored.
     if ((pickup || dropoff) && created?.id) {
       try {
         await supabase.from('trips').update({ pickup_point: pickup || null, dropoff_point: dropoff || null }).eq('id', created.id);
-      } catch { /* column may not exist yet — safe to ignore */ }
+      } catch { /* columns may not exist yet — safe to ignore */ }
     }
 
     setSubmitting(false);
@@ -129,7 +127,6 @@ export default function NewTripPage() {
     return <div className="min-h-screen"><Navbar /><div className="container max-w-2xl py-8 space-y-4"><Skeleton className="h-9 w-56" /><Skeleton className="h-96" /></div></div>;
   }
 
-  // No approved vehicle → block with a helpful prompt
   if (approvedVehicles.length === 0) {
     return (
       <div className="min-h-screen"><Navbar />
@@ -176,7 +173,6 @@ export default function NewTripPage() {
         )}
 
         <form onSubmit={submit} className="space-y-6">
-          {/* Vehicle + route */}
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Route className="h-5 w-5" /> Route & Vehicle</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -212,7 +208,6 @@ export default function NewTripPage() {
             </CardContent>
           </Card>
 
-          {/* Schedule + pricing */}
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Calendar className="h-5 w-5" /> Schedule & Pricing</CardTitle></CardHeader>
             <CardContent className="space-y-4">
